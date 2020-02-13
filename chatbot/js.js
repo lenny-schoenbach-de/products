@@ -62,7 +62,7 @@ hubspotCallback = function (callback) {
   Object.keys(formData).forEach(function (response) {
 
     //Add to payload
-    appscriptPayload[response] = Array.isArray(formData[response]) ? formData[response].join(";") : formData[response]
+    appscriptPayload[response] = Array.isArray(formData[response]) ? formData[response].join(";").replace("+", "%2B") : formData[response].replace("+", "%2B");
 
   });
 
