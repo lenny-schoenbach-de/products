@@ -192,7 +192,7 @@ flowCallback = function(dto, success, error) {
 };
 phoneValidation = function (dto, success, error) {
 
-  return /^\+[0-9]?()[0-9](\s|\S)(\d[0-9]{9,12})$/.test(dto.text) ? success() : error();
+  return /^\+[0-9]?()[0-9](\s|\S)(\d[0-9]{7,15})$/.test(dto.text) ? success() : error();
 
 };
 url = new URL(window.location.href);
