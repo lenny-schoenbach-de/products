@@ -34,76 +34,53 @@ utilityFunctions = {
 
     return e.data.event && e.data.event.indexOf("calendly") === 0;
 
-  },
-  deleteCookie: function (name) {
-
-    var d = new Date();
-    d.setTime(d.getTime() + (-1*24*60*60*1000));
-    var expires = "expires="+ d.toUTCString();
-    var domain = window.location.hostname;
-    var splitDomain = domain.split(".");
-    domain = splitDomain.length === 3 ? splitDomain[1] + "." + splitDomain[2] : splitDomain.join(".");
-    document.cookie = name + "=" + "" + ";" + expires + ";path=/; domain="+"."+domain;
-
   }
 
 };
 hubspotCallback = function (callback) {
 
-  //Define all variables
-  var appscriptUri, formData, appscriptPayload;
+    //Define all variables
+    var appscriptUri, formData, appscriptPayload;
 
-  //Initiate variables
-  appscriptUri = callback.redirectUri;
-  formData = cf.getFormData(true);
-  appscriptPayload = {};
-
-  //Create appscriptPayload
-  Object.keys(formData).forEach(function (response) {
-
-    //Add to payload
-    appscriptPayload[response] = Array.isArray(formData[response]) ? formData[response].join(";").replace("+", "%2B") : formData[response].replace("+", "%2B");
-
-  });
-
-  //Call endpoint
-  $.ajax({
-    crossDomain: true,
-    url: appscriptUri + "?callback=startRedirectFlow&payload=" + JSON.stringify(appscriptPayload),
-    method: "GET",
-    dataType: "jsonp"
-  });
+    //Initiate variables
+    appscriptUri = callback.redirectUri;
+    formData = cf.getFormData(true);
+    
+    //Call endpoint
+    $.ajax({
+      crossDomain: true,
+      url: appscriptUri + "?callback=startRedirectFlow&email=" + formData.email + "&hubspot_form_id=" + chatSettings.form.hubspotFormId,
+      method: "GET",
+      dataType: "jsonp"
+    });
 
 };
 submitCallback = function () {
 
-  //Define all variables
-  var trackingCookies, dataLayer, formData, hubspotUri, hubspotPayload, hubspotFields, hubspotContext;
+    //Define all variables
+    var trackingCookies, dataLayer, formData, hubspotUri, hubspotPayload, hubspotFields, hubspotContext;
 
-  //Intiate variables
-  trackingCookies = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_placement", "landingpage", "referrer"];
-  dataLayer = window.dataLayer || [];
-  formData = cf.getFormData(true);
-  hubspotUri = "https://api.hsforms.com/submissions/v3/integration/submit/";
-  hubspotPayload = {};
-  hubspotFields = [];
-  hubspotContext = {};
+    //Intiate variables
+    trackingCookies = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term", "utm_placement", "landingpage", "referrer"];
+    dataLayer = window.dataLayer || [];
+    formData = cf.getFormData(true);
+    hubspotUri = "https://api.hsforms.com/submissions/v3/integration/submit/";
+    hubspotPayload = {};
+    hubspotFields = [];
+    hubspotContext = {};
 
-  //Track Submitted a survey
-  dataLayer.push({
+    //Track Submitted a survey
+    dataLayer.push({
 
-    event: "Submitted a form",
-    form_id: chatSettings.form.hubspotFormId,
-    form_type: "chat",
-    form_name: chatSettings.form.hubspotFormName
+      event: "Submitted a form",
+      form_id: chatSettings.form.hubspotFormId,
+      form_type: "chat",
+      form_name: chatSettings.form.hubspotFormName
 
-  });
+    });
 
-  //Create hubspotUri
-  hubspotUri += chatSettings.form.hubspotAccountId + "/" + chatSettings.form.hubspotFormId;
-
-  //Check if user is already identified
-  if (utilityFunctions.getCookie("identity") === undefined) {
+    //Create hubspotUri
+    hubspotUri += chatSettings.form.hubspotAccountId + "/" + chatSettings.form.hubspotFormId;
 
     //Add tracking cookies to formData
     trackingCookies.forEach(function (cookie) {
@@ -114,58 +91,53 @@ submitCallback = function () {
         //Update formData
         formData["tracking_" + cookie] = utilityFunctions.getCookie(cookie);
 
-        //Delete cookie
-        utilityFunctions.deleteCookie(cookie);
-
       }
 
     });
 
-  }
+    //Create hubspotFields
+    Object.keys(formData).forEach(function (response) {
 
-  //Create hubspotFields
-  Object.keys(formData).forEach(function (response) {
+      //Add to payload
+      hubspotFields.push({
 
-    //Add to payload
-    hubspotFields.push({
+        name: response,
+        value: Array.isArray(formData[response]) ? formData[response].join(";") : formData[response]
 
-      name: response,
-      value: Array.isArray(formData[response]) ? formData[response].join(";") : formData[response]
+      });
 
     });
 
-  });
+    //Create hubspotContext
+    hubspotContext["pageName"] = document.title;
+    hubspotContext["pageUri"] = window.location.href.split("?")[0];
 
-  //Create hubspotContext
-  hubspotContext["pageName"] = document.title;
-  hubspotContext["pageUri"] = window.location.href.split("?")[0];
+    //Add tracking data
+    if (utilityFunctions.getCookie("hubspotutk")) {
 
-  //Add tracking data
-  if (utilityFunctions.getCookie("hubspotutk")) {
+      hubspotContext["hutk"] = utilityFunctions.getCookie("hubspotutk");
 
-    hubspotContext["hutk"] = utilityFunctions.getCookie("hubspotutk");
-
-  }
-
-  //Fill hubspotPayload
-  hubspotPayload["context"] = hubspotContext;
-  hubspotPayload["fields"] = hubspotFields;
-
-  //Call Hubspot API
-  $.ajax({
-    url : hubspotUri,
-    type : 'POST',
-    headers: { 
-      'Accept': 'application/json',
-      'Content-Type': 'application/json' 
-    },
-    data : JSON.stringify(hubspotPayload),
-    dataType: 'json',
-    success : hubspotCallback,
-    error : function (request, error) {
-      console.log("Request: "+JSON.stringify(request));
     }
-  });
+
+    //Fill hubspotPayload
+    hubspotPayload["context"] = hubspotContext;
+    hubspotPayload["fields"] = hubspotFields;
+
+    //Call Hubspot API
+    $.ajax({
+      url : hubspotUri,
+      type : 'POST',
+      headers: { 
+        'Accept': 'application/json',
+        'Content-Type': 'application/json' 
+      },
+      data : JSON.stringify(hubspotPayload),
+      dataType: 'json',
+      success : hubspotCallback,
+      error : function (request, error) {
+        console.log("Request: "+JSON.stringify(request));
+      }
+    });
 
 };
 flowCallback = function(dto, success, error) {
