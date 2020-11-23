@@ -484,7 +484,7 @@ function startRedirectFlow (callback) {
 
           window.location.replace(redirectUri)
 
-        }, 3500);
+        }, 7000);
 
       }
 
